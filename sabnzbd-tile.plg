@@ -17,12 +17,10 @@
 
 <CHANGES>
 ###2026.03.19
+- Fix: renamed page file from NewDashboard.page to SABnzbdDashboard.page to avoid key collision with other plugins using the same filename (e.g. plexstreams-lite), which caused one plugin to overwrite the other in find_pages()
 - Fix: moved tile to column3 to avoid conflict with other column1 plugins (e.g. plexstreams-lite)
-- Fix: pre-register tile in dashboard_settings to prevent Content Manager from hiding other tiles
 - Reduced to 1 active download + 2 recent history items for a more compact tile
 - Initial release: SABnzbd download queue and history widget
-- Shows up to 3 active downloads with progress bars
-- Shows last 4 history items with status (Completed / Failed)
 - Current speed and ETA in tile header
 - Auto-refreshes every 10 seconds
 - Settings page for SABnzbd URL and API key
@@ -35,7 +33,7 @@
 -->
 <FILE Name="&plgPATH;/&name;.txz" Run="upgradepkg --install-new">
 <URL>&pkgURL;/&name;.txz</URL>
-<MD5>c941e0a5293062cb19e511a2c35a7687</MD5>
+<MD5>1b90d2e1b1b78ad01b84a767d59c6963</MD5>
 </FILE>
 
 <FILE Run="/bin/bash" Method="remove">
