@@ -6,7 +6,7 @@ Cond="version_compare(parse_ini_file('/etc/unraid-version')['version'],'6.11.9',
 <?php
 $pluginname = "sabnzbd-tile";
 
-$mytiles[$pluginname]['column1'] = <<<EOT
+$mytiles[$pluginname]['column3'] = <<<EOT
 <tbody id="tblSabNzbdTile" title="_(SABnzbd Downloads)_">
 <tr>
 <td>

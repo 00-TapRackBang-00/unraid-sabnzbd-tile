@@ -17,6 +17,7 @@
 
 <CHANGES>
 ###2026.03.19
+- Fix: moved tile to column3 to avoid conflict with other column1 plugins (e.g. plexstreams-lite)
 - Initial release: SABnzbd download queue and history widget
 - Shows up to 3 active downloads with progress bars
 - Shows last 4 history items with status (Completed / Failed)
@@ -32,7 +33,7 @@
 -->
 <FILE Name="&plgPATH;/&name;.txz" Run="upgradepkg --install-new">
 <URL>&pkgURL;/&name;.txz</URL>
-<MD5>5c52513c040ded4c018d0e66f30ee08e</MD5>
+<MD5>86641ea6d7aad85bbbe5395b0fd5f6ad</MD5>
 </FILE>
 
 <FILE Run="/bin/bash" Method="remove">
