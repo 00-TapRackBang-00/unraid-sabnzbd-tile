@@ -18,7 +18,8 @@ $mytiles[$pluginname]['column3'] = <<<EOT
             <span id="sab-status">Connecting...</span>
         </div>
     </span>
-    <span style="margin-left:auto; padding-right:6px; text-align:right; line-height:1.4; display:flex; flex-direction:column; align-items:flex-end; gap:0;">
+    <span class="sab-last-w"><span id="sab-last"></span></span>
+    <span style="padding-right:6px; text-align:right; line-height:1.4; display:flex; flex-direction:column; align-items:flex-end; gap:0;">
         <span id="sab-speed" style="display:block; font-size:13px; font-weight:bold; color:#f4a11c; white-space:nowrap;"></span>
         <span id="sab-eta"   style="display:block; font-size:10px; color:#888; white-space:nowrap;"></span>
         <a href="/Settings/SABnzbd" title="SABnzbd Settings" style="display:block; margin-top:4px; font-size:12px; color:#555; text-decoration:none; line-height:1;"><i class="fa fa-cog"></i></a>
@@ -37,6 +38,9 @@ EOT;
 <style>
 /* ── SABnzbd Tile ────────────────────────────────────────── */
 .sab-empty   { color:#777; font-style:italic; font-size:12px; }
+/* Last completed (header middle) */
+.sab-last-w  { flex:1; min-width:0; overflow:hidden; display:flex; align-items:center; justify-content:center; padding:0 6px; }
+#sab-last    { font-size:10px; color:#666; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
 /* Queue item */
 .sab-qitem   { padding:2px 0 3px; }
 .sab-qhd     { display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:3px; }
@@ -83,6 +87,7 @@ EOT;
         var statusEl = document.getElementById('sab-status');
         var speedEl  = document.getElementById('sab-speed');
         var etaEl    = document.getElementById('sab-eta');
+        var lastEl   = document.getElementById('sab-last');
         var bodyEl   = document.getElementById('sab-body');
         if (!statusEl || !bodyEl) return;
 
@@ -101,6 +106,8 @@ EOT;
             if (speedEl) speedEl.textContent = '';
             if (etaEl)   etaEl.textContent   = '';
         }
+
+        if (lastEl) lastEl.textContent = data.last ? '\u2713 ' + data.last : '';
 
         var html = '';
         if (q.length > 0) {
