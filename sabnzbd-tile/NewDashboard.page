@@ -1,0 +1,213 @@
+Menu="Dashboard:0"
+Icon="download"
+Tag="download"
+Cond="version_compare(parse_ini_file('/etc/unraid-version')['version'],'6.11.9','>')"
+---
+<?php
+$pluginname = "sabnzbd-tile";
+
+$mytiles[$pluginname]['column1'] = <<<EOT
+<tbody id="tblSabNzbdTile" title="_(SABnzbd Downloads)_">
+<tr>
+<td>
+<span class="tile-header">
+    <span class="tile-header-left">
+        <img src="/plugins/sabnzbd-tile/images/icon-dashboard.svg" style="width:32px;height:32px;">
+        <div class="section">
+            <h3 class="tile-header-main">_(SABnzbd)_</h3>
+            <span id="sab-status">Connecting...</span>
+        </div>
+    </span>
+    <span style="margin-left:auto; padding-right:6px; text-align:right; line-height:1.4; display:flex; flex-direction:column; align-items:flex-end; gap:0;">
+        <span id="sab-speed" style="display:block; font-size:13px; font-weight:bold; color:#f4a11c; white-space:nowrap;"></span>
+        <span id="sab-eta"   style="display:block; font-size:10px; color:#888; white-space:nowrap;"></span>
+        <a href="/Settings/SABnzbd" title="SABnzbd Settings" style="display:block; margin-top:4px; font-size:12px; color:#555; text-decoration:none; line-height:1;"><i class="fa fa-cog"></i></a>
+    </span>
+</span>
+</td>
+</tr>
+<tr>
+<td style="vertical-align:top; padding-top:4px; width:100%;">
+    <div id="sab-body"></div>
+</td>
+</tr>
+</tbody>
+EOT;
+?>
+<style>
+/* ── SABnzbd Tile ────────────────────────────────────────── */
+.sab-empty   { color:#777; font-style:italic; font-size:12px; }
+.sab-section { font-size:10px; font-weight:bold; color:#555; text-transform:uppercase;
+               letter-spacing:.06em; margin:6px 0 3px; }
+/* Queue item */
+.sab-qitem { padding:5px 0 6px; border-bottom:1px solid #222; }
+.sab-qitem:last-child { border-bottom:none; }
+.sab-qhd   { display:flex; justify-content:space-between; align-items:baseline; gap:6px; margin-bottom:2px; }
+.sab-qname { font-size:11px; font-weight:bold; color:#ddd; white-space:nowrap;
+             overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.sab-qcat  { font-size:10px; color:#888; flex-shrink:0; white-space:nowrap; }
+.sab-qmeta { font-size:10px; color:#666; margin-bottom:3px; white-space:nowrap;
+             overflow:hidden; text-overflow:ellipsis; }
+/* Progress bar */
+.sab-prog-wrap { position:relative; }
+.sab-prog-bg   { background:rgba(255,255,255,.15); border-radius:3px; height:12px; overflow:hidden; width:100%; }
+.sab-prog-fill { height:100%; background:#f4a11c; transition:width 1s linear; }
+.sab-prog-fill.paused { background:#888; }
+.sab-prog-pct  { position:absolute; top:0; left:0; right:0; bottom:0;
+                 display:flex; align-items:center; justify-content:center;
+                 font-size:9px; font-weight:bold; color:#fff; pointer-events:none;
+                 text-shadow:0 1px 2px rgba(0,0,0,.9); }
+/* History item */
+.sab-hitem { display:flex; align-items:baseline; gap:6px; padding:4px 0;
+             border-bottom:1px solid #1e1e1e; }
+.sab-hitem:last-child { border-bottom:none; }
+.sab-hicon { font-size:11px; flex-shrink:0; width:14px; text-align:center; }
+.sab-hicon.ok   { color:#4caf50; }
+.sab-hicon.fail { color:#f44336; }
+.sab-hicon.warn { color:#f0a500; }
+.sab-hname { font-size:11px; color:#bbb; white-space:nowrap; overflow:hidden;
+             text-overflow:ellipsis; flex:1; min-width:0; }
+.sab-hsize { font-size:10px; color:#555; flex-shrink:0; white-space:nowrap; }
+.sab-hcat  { font-size:10px; color:#555; flex-shrink:0; white-space:nowrap; }
+/* Scroll animation */
+@keyframes sab-marquee {
+    0%, 20%  { transform: translateX(0); }
+    80%, 100% { transform: translateX(var(--sab-shift, 0px)); }
+}
+.sab-scroll { overflow:visible; text-overflow:clip;
+              animation: sab-marquee 5s ease-in-out infinite; }
+</style>
+<script>
+(function() {
+    var POLL_MS = 10000;
+
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                        .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function applyScroll(container) {
+        setTimeout(function() {
+            var els = container.querySelectorAll('.sab-qname, .sab-hname');
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
+                var shift = el.scrollWidth - el.offsetWidth;
+                if (shift > 4) {
+                    el.style.setProperty('--sab-shift', '-' + shift + 'px');
+                    el.classList.add('sab-scroll');
+                } else {
+                    el.classList.remove('sab-scroll');
+                }
+            }
+        }, 100);
+    }
+
+    function render(data) {
+        var statusEl = document.getElementById('sab-status');
+        var speedEl  = document.getElementById('sab-speed');
+        var etaEl    = document.getElementById('sab-eta');
+        var bodyEl   = document.getElementById('sab-body');
+        if (!statusEl || !bodyEl) return;
+
+        var q = data.queue   || [];
+        var h = data.history || [];
+
+        // Header status line
+        if (data.paused) {
+            statusEl.textContent = 'Paused';
+            if (speedEl) speedEl.textContent = '';
+            if (etaEl)   etaEl.textContent   = '';
+        } else if (q.length > 0) {
+            statusEl.textContent = q.length + ' Downloading';
+            if (speedEl) speedEl.textContent = data.speed || '';
+            if (etaEl)   etaEl.textContent   = data.eta ? 'ETA ' + data.eta : '';
+        } else {
+            statusEl.textContent = 'Idle';
+            if (speedEl) speedEl.textContent = '';
+            if (etaEl)   etaEl.textContent   = '';
+        }
+
+        var html = '';
+
+        // Queue section
+        if (q.length > 0) {
+            html += '<div class="sab-section">Downloading</div>';
+            for (var i = 0; i < q.length; i++) {
+                var item = q[i];
+                var isPaused = (item.status || '').toLowerCase() === 'paused';
+                var meta = [];
+                if (item.sizeleft && item.size) meta.push(item.sizeleft + ' / ' + item.size);
+                if (item.timeleft && !isPaused) meta.push(item.timeleft);
+                html += '<div class="sab-qitem">'
+                      +   '<div class="sab-qhd">'
+                      +     '<div class="sab-qname">' + esc(item.name) + '</div>'
+                      +     (item.cat ? '<div class="sab-qcat">' + esc(item.cat) + '</div>' : '')
+                      +   '</div>'
+                      +   (meta.length ? '<div class="sab-qmeta">' + esc(meta.join(' · ')) + '</div>' : '')
+                      +   '<div class="sab-prog-wrap">'
+                      +     '<div class="sab-prog-bg">'
+                      +       '<div class="sab-prog-fill' + (isPaused ? ' paused' : '') + '" style="width:' + item.pct + '%"></div>'
+                      +     '</div>'
+                      +     '<span class="sab-prog-pct">' + item.pct + '%</span>'
+                      +   '</div>'
+                      + '</div>';
+            }
+        }
+
+        // History section
+        if (h.length > 0) {
+            html += '<div class="sab-section">Recent</div>';
+            for (var j = 0; j < h.length; j++) {
+                var hi = h[j];
+                var st = (hi.status || '').toLowerCase();
+                var iconClass = st === 'completed' ? 'ok' : (st === 'failed' ? 'fail' : 'warn');
+                var icon      = st === 'completed' ? '&#10003;' : (st === 'failed' ? '&#10007;' : '&#9679;');
+                html += '<div class="sab-hitem">'
+                      +   '<span class="sab-hicon ' + iconClass + '">' + icon + '</span>'
+                      +   '<span class="sab-hname">' + esc(hi.name) + '</span>'
+                      +   (hi.cat  ? '<span class="sab-hcat">'  + esc(hi.cat)  + '</span>' : '')
+                      +   (hi.size ? '<span class="sab-hsize">' + esc(hi.size) + '</span>' : '')
+                      + '</div>';
+            }
+        }
+
+        if (!html) {
+            html = '<span class="sab-empty">Queue empty — no recent downloads</span>';
+        }
+
+        bodyEl.innerHTML = html;
+        applyScroll(bodyEl);
+    }
+
+    function fetchData() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', '/plugins/sabnzbd-tile/ajax.php?_t=' + Date.now(), true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                try {
+                    var data = JSON.parse(xhr.responseText);
+                    if (data && data.error) {
+                        var el = document.getElementById('sab-status');
+                        if (el) el.textContent = data.error === 'not_configured'
+                            ? 'Not configured — visit Settings › SABnzbd'
+                            : 'Error: ' + data.error;
+                        var body = document.getElementById('sab-body');
+                        if (body) body.innerHTML = '';
+                    } else {
+                        render(data);
+                    }
+                } catch(e) {}
+            }
+        };
+        xhr.onerror = function() {
+            var el = document.getElementById('sab-status');
+            if (el) el.textContent = 'Connection error';
+        };
+        xhr.send();
+    }
+
+    if (window._sabInterval) clearInterval(window._sabInterval);
+    window._sabInterval = setInterval(fetchData, POLL_MS);
+    setTimeout(fetchData, 600);
+})();
+</script>

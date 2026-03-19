@@ -1,0 +1,46 @@
+<?xml version='1.0' standalone='yes'?>
+<!DOCTYPE PLUGIN [
+<!ENTITY name      "sabnzbd-tile">
+<!ENTITY author    "00-TapRackBang-00">
+<!ENTITY version   "2026.03.19">
+<!ENTITY pluginURL "https://raw.githubusercontent.com/00-TapRackBang-00/unraid-sabnzbd-tile/main/sabnzbd-tile.plg">
+<!ENTITY pkgURL    "https://github.com/00-TapRackBang-00/unraid-sabnzbd-tile/releases/download/&version;">
+<!ENTITY plgPATH   "/boot/config/plugins/&name;">
+]>
+
+<PLUGIN name="&name;" author="&author;" version="&version;"
+        pluginURL="&pluginURL;"
+        launch="Settings/SABnzbd"
+        min="6.11.9"
+        icon="download"
+        support="https://github.com/00-TapRackBang-00/unraid-sabnzbd-tile">
+
+<CHANGES>
+###2026.03.19
+- Initial release: SABnzbd download queue and history widget
+- Shows up to 3 active downloads with progress bars
+- Shows last 4 history items with status (Completed / Failed)
+- Current speed and ETA in tile header
+- Auto-refreshes every 10 seconds
+- Settings page for SABnzbd URL and API key
+</CHANGES>
+
+<!--
+  Install/upgrade: download txz from GitHub release, install via upgradepkg.
+  On every boot Unraid re-runs this against the locally cached txz,
+  restoring the plugin files to the RAM disk automatically.
+-->
+<FILE Name="&plgPATH;/&name;.txz" Run="upgradepkg --install-new">
+<URL>&pkgURL;/&name;.txz</URL>
+<MD5>5c52513c040ded4c018d0e66f30ee08e</MD5>
+</FILE>
+
+<FILE Run="/bin/bash" Method="remove">
+<INLINE>
+removepkg &name; 2>/dev/null
+rm -rf /usr/local/emhttp/plugins/&name;
+echo "&name; removed"
+</INLINE>
+</FILE>
+
+</PLUGIN>

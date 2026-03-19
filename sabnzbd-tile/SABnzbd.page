@@ -1,0 +1,106 @@
+Menu="Settings"
+Title="SABnzbd Tile"
+Icon="download"
+Tag="download"
+Cond="version_compare(parse_ini_file('/etc/unraid-version')['version'],'6.11.9','>')"
+---
+<?php
+$plgDir  = '/boot/config/plugins/sabnzbd-tile';
+$cfgFile = "$plgDir/sabnzbd-tile.cfg";
+
+$cfg    = file_exists($cfgFile) ? (parse_ini_file($cfgFile) ?: []) : [];
+$host   = $cfg['HOST']   ?? '';
+$apikey = $cfg['APIKEY'] ?? '';
+?>
+<style>
+#sab-cfg { max-width:580px; }
+#sab-cfg .notice { padding:9px 13px; border-radius:5px; font-size:12px; margin-bottom:18px; display:none; }
+#sab-cfg .notice.ok  { background:rgba(60,140,60,.2); border:1px solid #3a7a3a; color:#8ec98e; }
+#sab-cfg .notice.err { background:rgba(140,50,50,.2); border:1px solid #7a3a3a; color:#c98e8e; }
+#sab-cfg table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+#sab-cfg td { padding:10px 0; vertical-align:top; }
+#sab-cfg td.label { width:150px; padding-right:16px; font-weight:bold; color:#ccc; padding-top:13px; }
+#sab-cfg input[type=text] { width:100%; max-width:360px; box-sizing:border-box; }
+#sab-cfg .hint { font-size:11px; color:#777; margin-top:5px; line-height:1.5; }
+#sab-cfg .hint code { background:#2a2a2a; padding:1px 4px; border-radius:3px; }
+#sab-cfg .btns { display:flex; gap:10px; }
+#sab-cfg button.secondary { background:#3a3a3a; border-color:#555; color:#ccc; }
+#sab-cfg button.secondary:hover { background:#444; }
+.sab-brand { display:flex; align-items:center; gap:16px; margin-bottom:24px; border-bottom:1px solid #2a2a2a; padding-bottom:20px; }
+.sab-brand img { width:56px; height:56px; }
+.sab-brand-title { font-size:18px; font-weight:bold; color:#f4a11c; line-height:1.3; }
+.sab-brand-sub { font-size:12px; color:#666; margin-top:3px; }
+</style>
+
+<div id="sab-cfg">
+    <div class="sab-brand">
+        <img src="/plugins/sabnzbd-tile/images/icon.svg" alt="SABnzbd Tile">
+        <div>
+            <div class="sab-brand-title">SABnzbd Tile</div>
+            <div class="sab-brand-sub">Download queue and history on your Unraid dashboard</div>
+        </div>
+    </div>
+
+    <div id="sab-notice" class="notice"></div>
+
+    <table>
+        <tr>
+            <td class="label">SABnzbd URL</td>
+            <td>
+                <input type="text" id="sab-host"
+                       value="<?= htmlspecialchars($host) ?>"
+                       placeholder="http://192.168.1.100:8080">
+                <div class="hint">
+                    Local URL of your SABnzbd instance including port.<br>
+                    Example: <code>http://192.168.1.100:8080</code>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td class="label">API Key</td>
+            <td>
+                <input type="text" id="sab-apikey"
+                       value="<?= htmlspecialchars($apikey) ?>"
+                       placeholder="32-character API key">
+                <div class="hint">
+                    Found in SABnzbd under <strong>Config → General → Security → API Key</strong>.
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="btns">
+        <button onclick="sabSave()">Apply</button>
+        <button class="secondary" onclick="sabTest()">Test Connection</button>
+    </div>
+</div>
+
+<script>
+function sabPost(action) {
+    var notice = document.getElementById('sab-notice');
+    notice.className = 'notice';
+    notice.style.display = 'none';
+
+    var body = new URLSearchParams({
+        action:     action,
+        HOST:       document.getElementById('sab-host').value.trim(),
+        APIKEY:     document.getElementById('sab-apikey').value.trim(),
+        csrf_token: window.csrf_token || ''
+    });
+
+    fetch('/plugins/sabnzbd-tile/save.php', { method:'POST', body: body })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            notice.textContent = d.message;
+            notice.className   = 'notice ' + (d.ok ? 'ok' : 'err');
+            notice.style.display = 'block';
+        })
+        .catch(function() {
+            notice.textContent = 'Request failed.';
+            notice.className   = 'notice err';
+            notice.style.display = 'block';
+        });
+}
+function sabSave() { sabPost('save'); }
+function sabTest() { sabPost('test'); }
+</script>
