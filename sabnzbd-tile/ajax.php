@@ -18,8 +18,8 @@ function sab_get($host, $key, $mode, $limit = 5) {
     return json_decode($res, true);
 }
 
-$qdata = sab_get($host, $key, 'queue', 3);
-$hdata = sab_get($host, $key, 'history', 4);
+$qdata = sab_get($host, $key, 'queue', 1);
+$hdata = sab_get($host, $key, 'history', 2);
 
 if ($qdata === null && $hdata === null) {
     echo json_encode(['error' => 'connect_failed']);
